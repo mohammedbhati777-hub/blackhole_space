@@ -171,3 +171,29 @@ input[type="range"]::-moz-range-thumb { width: 9px; height: 9px; border: none; b
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
   animation: scan 3.2s linear infinite;
 }
+
+/* title line-mask reveal */
+@keyframes riseLine { from { transform: translateY(112%); } to { transform: translateY(0); } }
+.reveal-line { display: block; overflow: hidden; }
+.reveal-line > span {
+  display: block;
+  transform: translateY(112%);
+  animation: riseLine 1.05s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes driftX { from { transform: translateX(0); } to { transform: translateX(-14px); } }
+.log-line { display: flex; align-items: baseline; gap: 12px; }
+.log-line::before {
+  content: "»";
+  color: var(--amber);
+  font-family: "IBM Plex Mono", monospace;
+  animation: blinkCursor 1.4s step-end infinite;
+}
+
+/* descent progress hairline */
+@keyframes shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+.descent-bar {
+  background: linear-gradient(90deg, rgba(255,154,60,0.15), rgba(255,154,60,0.85), rgba(255,154,60,0.15));
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}

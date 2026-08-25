@@ -7,6 +7,7 @@ import PostFX from "./PostFX";
 import CameraRig from "./CameraRig";
 import Labels3D from "./Labels3D";
 import { ProbeSystem, TidalViz, GhostRing, ObservatoryGrid } from "./Dynamics";
+import IntroFX from "./IntroFX";
 import { ExpoRunner } from "../ui/ExpoMode";
 import { mapRsToScene, sysScaleFor } from "../physics/constants";
 
@@ -31,6 +32,7 @@ export default function SceneRoot() {
     >
       <color attach="background" args={["#000000"]} />
       <Starfield />
+      <IntroFX />
       <BlackHole />
       <AccretionDisk />
       <ObservatoryGrid />

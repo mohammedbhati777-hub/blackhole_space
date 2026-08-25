@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
@@ -19,6 +19,13 @@ export default function CameraRig() {
   const fovRef = useRef(50);
   const entryRef = useRef<{ t: number; from: number } | null>(null);
   const horizonSounded = useRef(false);
+  /* cinematic staging — off-center framing + slow parallax drift in the intro */
+  const offRef = useRef(0.17);
+  const angRef = useRef(0);
+  const angPrev = useRef(0);
+  const tgt = useRef(new THREE.Vector3(-16, 4, 0));
+  const Y_AXIS = useMemo(() => new THREE.Vector3(0, 1, 0), []);
+  const rel = useMemo(() => new THREE.Vector3(), []);
 
   useFrame((state, rawDelta) => {
     const dt = Math.min(rawDelta, 0.05);
@@ -40,7 +47,7 @@ export default function CameraRig() {
       entryRef.current.t += dt / 5.6;
       const k = smoothstep(0, 1, Math.min(entryRef.current.t, 1));
       const ease = k * k * (3 - 2 * k);
-      const target = mapRsToScene(90, s);
+      const target = mapRsToScene(100, s);
       const r = THREE.MathUtils.lerp(entryRef.current.from, target, ease);
       cam.position.setLength(Math.max(r, 2.1 * s));
       if (entryRef.current.t >= 1) {
@@ -77,6 +84,27 @@ export default function CameraRig() {
       else if (r0 > hi) cam.position.multiplyScalar(damp(r0, hi, 4, dt) / r0);
     }
 
+    /* ── intro staging: frame the anomaly right of center, drift, then
+          swing back to dead-center as we fall in ── */
+    {
+      const R = cam.position.length();
+      const isIntro = st.phase === "intro";
+      offRef.current = damp(offRef.current, isIntro ? 0.17 : 0, isIntro ? 0.7 : 0.85, dt);
+      const t = state.clock.elapsedTime;
+      angRef.current = damp(angRef.current, isIntro ? Math.sin(t * 0.055) * 0.11 + 0.045 : 0, 0.8, dt);
+      tgt.current.x = damp(tgt.current.x, -offRef.current * R, 2.2, dt);
+      tgt.current.y = damp(tgt.current.y, offRef.current * R * 0.24, 2.2, dt);
+      tgt.current.z = damp(tgt.current.z, 0, 2.2, dt);
+      ctl.target.copy(tgt.current);
+
+      const dAng = angRef.current - angPrev.current;
+      angPrev.current = angRef.current;
+      if (Math.abs(dAng) > 1e-6) {
+        rel.copy(cam.position).sub(tgt.current).applyAxisAngle(Y_AXIS, dAng);
+        cam.position.copy(rel.add(tgt.current));
+      }
+    }
+
     ctl.update();
 
     /* derive proper distance from camera radius */
@@ -85,8 +113,11 @@ export default function CameraRig() {
     live.distRs = distRs;
     live.sceneRadius = radius;
 
-    /* FOV — widens as you fall */
-    const fovTarget = 47 + 26 * smoothstep(24, 3.2, distRs);
+    /* FOV — widens as you fall, with a velocity punch on entry */
+    let fovTarget = 47 + 26 * smoothstep(24, 3.2, distRs);
+    if (st.phase === "entering" && entryRef.current) {
+      fovTarget += Math.sin(Math.min(entryRef.current.t, 1) * Math.PI) * 11;
+    }
     fovRef.current = damp(fovRef.current, fovTarget, 2.0, dt);
     if (Math.abs(cam.fov - fovRef.current) > 0.02) {
       cam.fov = fovRef.current;
